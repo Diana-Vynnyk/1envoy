@@ -1,3 +1,6 @@
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
 static_resources:
   listeners:
   - address:
@@ -26,10 +29,10 @@ static_resources:
           - name: envoy.filters.http.router
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-
   clusters:
   - name: service1
-    type: STRICT_DNS
+    type: STATIC
+    connect_timeout: 0.25s
     lb_policy: ROUND_ROBIN
     load_assignment:
       cluster_name: service1
@@ -38,5 +41,5 @@ static_resources:
         - endpoint:
             address:
               socket_address:
-                address: app
-                port_value: 8080
+                address: 127.0.0.1
+                port_value: 80
