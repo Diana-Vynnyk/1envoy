@@ -48,4 +48,11 @@ RUN echo '#!/bin/sh' > /service/apache2/run
 #RUN echo 'exec /etc/init.d/apache2 start' >> /service/apache2/run
 RUN echo 'exec systemctl start apache2' >> /service/apache2/run
 
+RUN touch /script.sh
+RUN chmod 755 /script.sh
+RUN echo '#!/bin/sh' > /script.sh
+RUN echo 'cd /service' >> /script.sh
+RUN echo 'exec svscan' >> /script.sh
+ENTRYPOINT ["/bin/bash", "/script.sh"]
+#CMD ["/service", "svscan"]
 #CMD ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml"]
