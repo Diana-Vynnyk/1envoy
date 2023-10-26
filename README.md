@@ -4,23 +4,29 @@
 2. [How services talk to each other?](#paragraph2)
 3. [What is a sidecar proxy?](#paragraph3)
 4. [Envoy](#paragraph4)
-5. [Install Envoy on Ubuntu Linux](#paragraph5)
-6. [To Run Envoy](#paragraph6)
-7. [Check Envoy is proxying on http://localhost:10000.](#paragraph7)
-8. [Validating  Envoy configuration](#paragraph8)
-9. [Envoy logging](#paragraph9)
-10. [Debugging Envoy](#paragraph10)
-11. [Configuration: Static](#paragraph11)
-12. [`static_resources`](#paragraph12)
-13. [`listeners`](#paragraph13)
-14. [`clusters`](#paragraph14)
-15. [Envoy admin interface](#paragraph15)
-16. [`admin`](#paragraph16)
-17. [`stat_prefix`](#paragraph17)
-18. [`config_dump`](#paragraph18)
-19. [Admin endpoints: `stats`](#paragraph19)
-20. [Envoy admin web UI](#paragraph20)
-21. [Sources](#paragraph21)
+   1. [What is Envoy proxy?](#subparagraph1)
+   2. [What are Envoy’s building blocks?](#subparagraph2)
+   3. [Clusters](#subparagraph3)
+   4. [What are Envoy proxy filters?](#subparagraph4)
+   5. [What are HTTP filters?](#subparagraph5)
+   6. [Envoy proxy and dynamic configuration](#subparagraph6)
+6. [Install Envoy on Ubuntu Linux](#paragraph5)
+7. [To Run Envoy](#paragraph6)
+8. [Check Envoy is proxying on http://localhost:10000.](#paragraph7)
+9. [Validating  Envoy configuration](#paragraph8)
+10. [Envoy logging](#paragraph9)
+11. [Debugging Envoy](#paragraph10)
+12. [Configuration: Static](#paragraph11)
+13. [`static_resources`](#paragraph12)
+14. [`listeners`](#paragraph13)
+15. [`clusters`](#paragraph14)
+16. [Envoy admin interface](#paragraph15)
+17. [`admin`](#paragraph16)
+18. [`stat_prefix`](#paragraph17)
+19. [`config_dump`](#paragraph18)
+20. [Admin endpoints: `stats`](#paragraph19)
+21. [Envoy admin web UI](#paragraph20)
+22. [Sources](#paragraph21)
 
 
 
@@ -119,6 +125,82 @@ Envoy is famous for its observability capabilities. It exposes various statistic
 
 
 # Envoy <a name="paragraph4"></a>
+
+Envoy is the engine that keeps Istio running. If you’re familiar with Istio, you know that the collection of all Envoys in the Istio service mesh is also referred to as the **data plane**. 
+
+## What is Envoy proxy? <a name="subparagraph1"></a>
+
+Envoy Proxy is an open-source edge and service proxy designed for cloud-native applications. The proxy was originally built at Lyft. It’s written in C++ and designed for services and applications, and it serves as a universal data plane for large-scale microservice service mesh architectures.
+
+The idea is to have Envoy sidecars run next to each service in your application, abstracting the network and providing features like load balancing, resiliency features such as timeouts and retries, observability and metrics, and so on. 
+
+One of the cool features of Envoy is that we can configure it through network APIs without restarting! These APIs are called **discovery services** or **xDS** for short.
+
+In addition to the traditional load balancing between different instances, Envoy also allows you to implement retries, circuit breakers, rate limiting, and so on. 
+
+Also, while doing all that, Envoy collects rich metrics about the traffic it passes through and exposes the metrics for consumption and use in tools such as Grafana, for example.
+
+## What are Envoy’s building blocks? <a name="subparagraph2"></a>
+Let’s explain Envoy’s building blocks using an example. Let’s say we have the Envoy proxy running, and it’s sending requests through to a couple of services. We are trying to send a request to the proxy, so it ends up on one of the backend services.
+
+![image](https://tetrate.io/wp-content/uploads/2021/07/envoy-1.png)
+**Figure 1:** Envoy Proxy building blocks
+
+To send a request, we need an IP address and a port the proxy is listening on (e.g., 1.0.0.0:9999 from the image above). 
+
+The address and port Envoy proxy listens on is called a **listener**. Listeners are the way Envoy receives connections or requests. There can be more than one listener as Envoy can listen on more than one IP and port combination.
+
+Attached to these listeners are **routes** – routes are a set of rules that map virtual hosts to clusters. We could look at the request metadata– things like headers and URI path — and then route the traffic to clusters.
+
+![image](https://tetrate.io/wp-content/uploads/2021/07/Envoy-5-mins-100-1-1536x685.jpg)
+**Figure 2:** Envoy Proxy listener and routes
+
+For example, if the Host header contains the value hello.com, we want to route the traffic to one service, or if the path starts with /api we wish to route to the API back-end services. Based on the matching rules in the route, Envoy selects a **cluster**.
+
+![image](https://tetrate.io/wp-content/uploads/2021/07/Envoy-5-mins-copy-100-1536x685.jpg)
+**Figure 3:** Envoy listener, routes, and clusters
+
+### Clusters <a name="subparagraph3"></a>
+A cluster is a group of similar upstream hosts that accept traffic. We could have a cluster representing our API services or a cluster representing a specific version of back-end services. This is all configurable, and we can decide which hosts to include in which clusters. Clusters are also where we can configure things like outlier detection, circuit breakers, connection timeouts, and load balancing policies.
+
+Once we have received the request, we know where to route it (using the routes) and how to send it (using the cluster and load balancing policies). We can select an **endpoint** to send the traffic to. This is where we go from a logical entity of a cluster to a physical IP and port. We can structure the endpoints to prioritize certain instances over other instances based on the metadata. For example, we could set up the locality of endpoints to keep the traffic local, to send it to the closest endpoint.
+
+## What are Envoy proxy filters? <a name="subparagraph4"></a>
+When a request hits one of the listeners in Envoy, that request goes through a set of filters. There are three types of filters that Envoy currently provides, and they form a hierarchical filter chain:
+
+**1. Listener filters**
+Listener filters access **raw data** and can manipulate metadata of L4 connections during the initial connection phase. For example, a TLS inspector filter can identify whether the connection is TLS encrypted and extract relevant TLS information from it.
+
+**2. Network filters**
+Network filters work with raw data as well: the TCP packages. An example of a network filter is the TCP proxy filter that routes client connection data to upstream hosts and generates connection statistics.
+
+**3. HTTP filters**
+HTTP filters operate at layer 7 and work with HTTP data. The last network filter in the chain, HCM or HTTP connection manager filter, optionally creates these filters. The HCM filter translates from raw data to HTTP data, and the HTTP filters can manipulate HTTP requests and responses.
+
+![image](https://tetrate.io/wp-content/uploads/2021/07/envoy-filters-1536x515.png)
+
+**Figure 4:** Envoy filters
+Listeners have a set of **TCP filters** that can interact with the TCP data. There can be more than one TCP filter in the chain, and the **last filter** in the chain is a special one called the HTTP connection manager (HCM). The HCM filter turns Envoy into an **L7 proxy**; it converts the bytes from the requests into an HTTP request.
+
+Within the HTTP connection manager filter, another set of HTTP filters can work with the HTTP requests. This is where we can do things on the HTTP level– we can work with headers, interact with the HTTP body, etc. Within the HTTP filter is where we define the routes, and the cluster selection happens. 
+
+The last filter in the HTTP filter chain is called a **router filter**. The router filter sends the requests to the selected cluster.
+
+## What are HTTP filters? <a name="subparagraph5"></a>
+We can think of HTTP filters as pieces of code that can interact with requests and responses. Envoy ships with numerous HTTP filters, but we can also write our filters and have Envoy dynamically load and run them. 
+
+The HTTP filters are chained together, so we can control where the filter gets placed in the chain. The fact that filters are chained means that they need to decide whether to continue executing the next filter or stop running the chain and close the connection. 
+
+There’s no need to have the filters compiled together with the Envoy proxy; we could do that, but it’s impractical.
+
+By default, the filters are written in C++. However, there’s a way to write the filters in Lua script, or we can use WebAssembly (Wasm) to develop them in other languages.
+
+## Envoy proxy and dynamic configuration <a name="subparagraph6"></a>
+A significant feature of Envoy is the ability to use dynamic configuration. So instead of hardcoding information about the clusters or endpoints, we could implement a gRPC or REST service that dynamically provides information about the clusters and endpoints. 
+
+Then in the Envoy configuration, we can reference these gRPC/REST endpoints instead of explicitly providing the configuration for clusters or endpoints.
+
+Istio’s pilot uses the dynamic configuration to discover the services in Kubernetes. For example, it reads the Kubernetes services and Endpoints, gets the IP addresses and ports, converts the data into Envoy readable configuration, and sends it to the Envoy proxies– the data plane– through these discovery services. Effectively, this allows us to create our control plane and integrate it with Envoy.
 
 ### Install Envoy on Ubuntu Linux <a name="paragraph5"></a>
 ```bash
@@ -476,6 +558,8 @@ Point your browser to http://localhost:9901.
 ## Sources <a name="paragraph21"></a>
 
 [Sidecar Proxy Pattern - The Basis Of Service Mesh](https://iximiuz.com/en/posts/service-proxy-pod-sidecar-oh-my/)
+
+[Get started with Envoy Proxy in 5 minutes](https://tetrate.io/blog/get-started-with-envoy-in-5-minutes/)
 
 [Envoy documentation](https://www.envoyproxy.io/docs/envoy/latest/)
 
