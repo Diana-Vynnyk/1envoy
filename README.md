@@ -141,9 +141,11 @@ In addition to the traditional load balancing between different instances, Envoy
 Also, while doing all that, Envoy collects rich metrics about the traffic it passes through and exposes the metrics for consumption and use in tools such as Grafana, for example.
 
 ## What are Envoy’s building blocks? <a name="subparagraph2"></a>
+
 Let’s explain Envoy’s building blocks using an example. Let’s say we have the Envoy proxy running, and it’s sending requests through to a couple of services. We are trying to send a request to the proxy, so it ends up on one of the backend services.
 
 ![image](https://tetrate.io/wp-content/uploads/2021/07/envoy-1.png)
+
 **Figure 1:** Envoy Proxy building blocks
 
 To send a request, we need an IP address and a port the proxy is listening on (e.g., 1.0.0.0:9999 from the image above). 
@@ -153,19 +155,23 @@ The address and port Envoy proxy listens on is called a **listener**. Listeners 
 Attached to these listeners are **routes** – routes are a set of rules that map virtual hosts to clusters. We could look at the request metadata– things like headers and URI path — and then route the traffic to clusters.
 
 ![image](https://tetrate.io/wp-content/uploads/2021/07/Envoy-5-mins-100-1-1536x685.jpg)
+
 **Figure 2:** Envoy Proxy listener and routes
 
 For example, if the Host header contains the value hello.com, we want to route the traffic to one service, or if the path starts with /api we wish to route to the API back-end services. Based on the matching rules in the route, Envoy selects a **cluster**.
 
 ![image](https://tetrate.io/wp-content/uploads/2021/07/Envoy-5-mins-copy-100-1536x685.jpg)
+
 **Figure 3:** Envoy listener, routes, and clusters
 
 ### Clusters <a name="subparagraph3"></a>
+
 A cluster is a group of similar upstream hosts that accept traffic. We could have a cluster representing our API services or a cluster representing a specific version of back-end services. This is all configurable, and we can decide which hosts to include in which clusters. Clusters are also where we can configure things like outlier detection, circuit breakers, connection timeouts, and load balancing policies.
 
 Once we have received the request, we know where to route it (using the routes) and how to send it (using the cluster and load balancing policies). We can select an **endpoint** to send the traffic to. This is where we go from a logical entity of a cluster to a physical IP and port. We can structure the endpoints to prioritize certain instances over other instances based on the metadata. For example, we could set up the locality of endpoints to keep the traffic local, to send it to the closest endpoint.
 
 ## What are Envoy proxy filters? <a name="subparagraph4"></a>
+
 When a request hits one of the listeners in Envoy, that request goes through a set of filters. There are three types of filters that Envoy currently provides, and they form a hierarchical filter chain:
 
 **1. Listener filters**
@@ -187,6 +193,7 @@ Within the HTTP connection manager filter, another set of HTTP filters can work 
 The last filter in the HTTP filter chain is called a **router filter**. The router filter sends the requests to the selected cluster.
 
 ## What are HTTP filters? <a name="subparagraph5"></a>
+
 We can think of HTTP filters as pieces of code that can interact with requests and responses. Envoy ships with numerous HTTP filters, but we can also write our filters and have Envoy dynamically load and run them. 
 
 The HTTP filters are chained together, so we can control where the filter gets placed in the chain. The fact that filters are chained means that they need to decide whether to continue executing the next filter or stop running the chain and close the connection. 
@@ -196,13 +203,14 @@ There’s no need to have the filters compiled together with the Envoy proxy; we
 By default, the filters are written in C++. However, there’s a way to write the filters in Lua script, or we can use WebAssembly (Wasm) to develop them in other languages.
 
 ## Envoy proxy and dynamic configuration <a name="subparagraph6"></a>
+
 A significant feature of Envoy is the ability to use dynamic configuration. So instead of hardcoding information about the clusters or endpoints, we could implement a gRPC or REST service that dynamically provides information about the clusters and endpoints. 
 
 Then in the Envoy configuration, we can reference these gRPC/REST endpoints instead of explicitly providing the configuration for clusters or endpoints.
 
 Istio’s pilot uses the dynamic configuration to discover the services in Kubernetes. For example, it reads the Kubernetes services and Endpoints, gets the IP addresses and ports, converts the data into Envoy readable configuration, and sends it to the Envoy proxies– the data plane– through these discovery services. Effectively, this allows us to create our control plane and integrate it with Envoy.
 
-### Install Envoy on Ubuntu Linux <a name="paragraph5"></a>
+## Install Envoy on Ubuntu Linux <a name="paragraph5"></a>
 ```bash
 sudo apt update
 sudo apt install apt-transport-https gnupg2 curl lsb-release
