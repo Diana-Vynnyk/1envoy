@@ -186,6 +186,7 @@ HTTP filters operate at layer 7 and work with HTTP data. The last network filter
 ![image](https://tetrate.io/wp-content/uploads/2021/07/envoy-filters-1536x515.png)
 
 **Figure 4:** Envoy filters
+
 Listeners have a set of **TCP filters** that can interact with the TCP data. There can be more than one TCP filter in the chain, and the **last filter** in the chain is a special one called the HTTP connection manager (HCM). The HCM filter turns Envoy into an **L7 proxy**; it converts the bytes from the requests into an HTTP request.
 
 Within the HTTP connection manager filter, another set of HTTP filters can work with the HTTP requests. This is where we can do things on the HTTP level– we can work with headers, interact with the HTTP body, etc. Within the HTTP filter is where we define the routes, and the cluster selection happens. 
