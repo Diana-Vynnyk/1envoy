@@ -62,5 +62,5 @@ RUN echo '#!/bin/sh' > /script.sh
 RUN echo 'cd /service' >> /script.sh
 RUN echo 'exec svscan' >> /script.sh
 ENTRYPOINT ["/bin/bash", "/script.sh"]
-#CMD ["/service", "svscan"]
-#CMD ["/usr/local/bin/envoy", "-c", "/etc/envoy/envoy.yaml"]
+
+
