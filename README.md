@@ -4,6 +4,23 @@
 2. [How services talk to each other?](#paragraph2)
 3. [What is a sidecar proxy?](#paragraph3)
 4. [Envoy](#paragraph4)
+5. [Install Envoy on Ubuntu Linux](#paragraph5)
+6. [To Run Envoy](#paragraph6)
+7. [Check Envoy is proxying on http://localhost:10000.](#paragraph7)
+8. [Validating  Envoy configuration](#paragraph8)
+9. [Envoy logging](#paragraph9)
+10. [Debugging Envoy](#paragraph10)
+11. [Configuration: Static](#paragraph11)
+12. [`static_resources`](#paragraph12)
+13. [`listeners`](#paragraph13)
+14. [`clusters`](#paragraph14)
+15. [Envoy admin interface](#paragraph15)
+16. [`admin`](#paragraph16)
+17. [`stat_prefix`](#paragraph17)
+18. [`config_dump`](#paragraph18)
+19. [Admin endpoints: `stats`](#paragraph19)
+20. [Envoy admin web UI](#paragraph20)
+21. [Sources](#paragraph21)
 
 
 
@@ -128,7 +145,7 @@ To start Envoy as a system daemon with the configuration, and start as follows:
 ```bash
 envoy -c envoy.yaml
 ```
-### Check Envoy is proxying on http://localhost:10000.
+### Check Envoy is proxying on http://localhost:10000. <a name="paragraph7"></a>
 ```bash
 curl -v localhost:10000
 ```
@@ -136,7 +153,7 @@ You can exit the server with `Ctrl-c`.
 
 **If you run Envoy inside a Docker container you may wish to use 0.0.0.0. Exposing the admin interface in this way may give unintended control of your Envoy server.**
 
-### Validating  Envoy configuration
+### Validating  Envoy configuration <a name="paragraph8"></a>
 
 You can start Envoy in `validate mode`.
 
@@ -150,7 +167,7 @@ For invalid configuration the process will print the errors and exit with `1`.
 envoy --mode validate -c my-envoy-config.yaml
 ```
 
-### Envoy logging
+### Envoy logging <a name="paragraph9"></a>
 By default Envoy system logs are sent to `/dev/stderr`.
 
 This can be overridden using `--log-path`.
@@ -183,7 +200,7 @@ Some Envoy filters and extensions may also have additional logging capabilities.
 
 Envoy can be configured to log to different formats, and to different outputs in addition to files and `stdout/err`.
 
-### Debugging Envoy
+### Debugging Envoy <a name="paragraph10"></a>
 The log level for Envoy system logs can be set using the `-l` or `--log-level` option.
 
 The available log levels are:
@@ -204,7 +221,7 @@ The following example inhibits all logging except for the `upstream` and `connec
 envoy -c envoy.yaml -l off --component-log-level upstream:debug,connection:trace
 ```
 
-### Configuration: Static
+### Configuration: Static <a name="paragraph11"></a>
 
 To start Envoy with static configuration, you will need to specify listeners and clusters as static_resources.
 
@@ -212,7 +229,7 @@ You can also add an admin section if you wish to monitor Envoy or retrieve stats
 
 The following sections walk through the static configuration provided in the demo configuration file used as the default in the Envoy Docker container.
 
-#### `static_resources`
+#### `static_resources` <a name="paragraph12"></a>
 
 The static_resources contain everything that is configured statically when Envoy starts, as opposed to dynamically at runtime.
 
@@ -223,7 +240,7 @@ static_resources:
   listeners:
 ```
 
-#### `listeners`
+#### `listeners` <a name="paragraph13"></a>
 
 The example configures a listener on port `10000`.
 
@@ -269,7 +286,7 @@ static_resources:
   - name: service_envoyproxy_io
 ```
 
-#### `clusters`
+#### `clusters` <a name="paragraph14"></a>
 
 The `service_envoyproxy_io` cluster proxies over `TLS` to https://www.envoyproxy.io.
 
@@ -300,10 +317,12 @@ The `service_envoyproxy_io` cluster proxies over `TLS` to https://www.envoyproxy
         sni: www.envoyproxy.io
 ```
 
-### Envoy admin interface
+### Envoy admin interface <a name="paragraph15"></a>
+
 The optional admin interface provided by Envoy allows you to view configuration and statistics, change the behaviour of the server, and tap traffic according to specific filter rules.
 
-#### `admin`
+#### `admin` <a name="paragraph16"></a>
+
 The admin message is required to enable and configure the administration server.
 
 The `address` key specifies the listening address which in the demo configuration is `0.0.0.0:9901`.
@@ -323,7 +342,8 @@ As the endpoint is not authenticated it is essential that you limit access to it
 
 You may wish to restrict the network address the admin server listens to in your own deployment as part of your strategy to limit access to this endpoint.
 
-#### `stat_prefix`
+#### `stat_prefix` <a name="paragraph17"></a>
+
 The Envoy HttpConnectionManager must be configured with stat_prefix.
 
 This provides a key that can be filtered when querying the stats interface as shown below
@@ -361,7 +381,8 @@ static_resources:
               routes:
               - match:
 ```
-### Admin endpoints: `config_dump`
+### Admin endpoints: `config_dump` <a name="paragraph18"></a>
+
 The config_dump endpoint returns Envoy’s runtime configuration in `json` format.
 
 The following command allows you to see the types of configuration available:
@@ -386,7 +407,8 @@ curl -s http://localhost:9901/config_dump?resource=dynamic_listeners | jq '.conf
 ```
 **Enabling the admin interface with dynamic configuration can be particularly useful as it allows you to use the config_dump endpoint to see how Envoy is configured at a particular point in time.**
 
-### Admin endpoints: `stats`
+### Admin endpoints: `stats` <a name="paragraph19"></a>
+
 The admin stats endpoint allows you to retrieve runtime information about Envoy.
 
 The stats are provided as `key: value` pairs, where the keys use a hierarchical dotted notation, and the values are one of `counter`, `histogram` or `gauge` types.
@@ -443,14 +465,16 @@ curl -s "http://localhost:9901/stats?filter=http.ingress_http.rq&format=json" | 
   }
 ]
 ```
-### Envoy admin web UI
+### Envoy admin web UI <a name="paragraph20"></a>
+
 Envoy also has a web user interface that allows you to view and modify settings and statistics.
 
 Point your browser to http://localhost:9901.
 
 
 
-## Sources
+## Sources <a name="paragraph21"></a>
+
 [Sidecar Proxy Pattern - The Basis Of Service Mesh](https://iximiuz.com/en/posts/service-proxy-pod-sidecar-oh-my/)
 
 [Envoy documentation](https://www.envoyproxy.io/docs/envoy/latest/)
