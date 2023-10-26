@@ -34,11 +34,12 @@ RUN chmod 755 /service/envoy/run
 RUN echo '#!/bin/sh' > /service/envoy/run
 RUN echo 'exec envoy -c /etc/envoy/envoy.yaml' >> /service/envoy/run
 
-#RUN mkdir /service/envoy/log 
-#RUN touch /service/envoy/log/run
-#RUN chmod 755 /service/envoy/log/run
-#RUN echo '#!/bin/sh' > /service/envoy/log/run
-#RUN echo 'exec multilog t ./main' >> /service/envoy/log/run
+RUN mkdir /service/envoy/log
+RUN chmod 1755 /service/envoy/log 
+RUN touch /service/envoy/log/run
+RUN chmod 755 /service/envoy/log/run
+RUN echo '#!/bin/sh' > /service/envoy/log/run
+RUN echo 'exec multilog t '-*[info]*' '+*[warning]*' s1048576 n10 ./main' >> /service/envoy/log/run
 
 RUN mkdir /service/apache2
 RUN chmod 1755 /service/apache2
@@ -47,6 +48,13 @@ RUN chmod 755 /service/apache2/run
 RUN echo '#!/bin/sh' > /service/apache2/run
 #RUN echo 'exec /etc/init.d/apache2 start' >> /service/apache2/run
 RUN echo 'exec systemctl start apache2' >> /service/apache2/run
+
+RUN mkdir /service/apache2/log 
+RUN chmod 1755 /service/apache2/log
+RUN touch /service/apache2/log/run
+RUN chmod 755 /service/apache2/log/run
+RUN echo '#!/bin/sh' > /service/apache2/log/run
+RUN echo 'exec multilog t '+*' s1048576 n10 ./apachelogs' >> /service/apache2/log/run
 
 RUN touch /script.sh
 RUN chmod 755 /script.sh
