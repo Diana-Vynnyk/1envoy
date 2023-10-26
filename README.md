@@ -1,6 +1,13 @@
 # Web Server Apache2 with Envoy as a Sidecar Proxy and Daemontools
 
-## [Screenshots:](https://drive.google.com/drive/folders/1hVJwRDy-7wuawmoHm_CpJeHNsXLh3NAR?usp=sharing)
+1. [Screenshots](#paragraph1)
+2. [How services talk to each other?](#paragraph2)
+3. [What is a sidecar proxy?](#paragraph3)
+4. [Envoy](#paragraph4)
+
+
+
+## [Screenshots:](https://drive.google.com/drive/folders/1hVJwRDy-7wuawmoHm_CpJeHNsXLh3NAR?usp=sharing) <a name="paragraph1"></a>
 [docker build](https://drive.google.com/file/d/1NsjGsZD7w9WmiMET98VOUtH1vPw5M4Kr/view?usp=sharing)
 
 [docker run](https://drive.google.com/file/d/1tlk9FLfzyiZF82GncubeIrHpyc3U8X6N/view?usp=sharing)
@@ -11,7 +18,7 @@
 
 
 
-## How services talk to each other?
+## How services talk to each other? <a name="paragraph2"></a>
 
 Imagine you're developing a service... For certainty, let's call it A. It's going to provide some public HTTP API to its clients. However, to serve requests it needs to call another service. Let's call this upstream service - B.
 
@@ -29,7 +36,7 @@ Unfortunately, this simplicity is not always the case. Replace service A with se
 
 But what if retries are not the only thing you need? Proper request timeouts have to be ensured as well. And how about distributed tracing? It'd be nice to correlate the whole request tree with the original customer transaction by propagating some additional HTTP headers. However, every such capability would make the HTTP libraries even more bloated...
 
-## What is a sidecar proxy?
+## What is a sidecar proxy? <a name="paragraph3"></a>
 
 ![Sidecar](https://iximiuz.com/service-proxy-pod-sidecar-oh-my/40-service-a-sidecar-service-b.png)
 
@@ -94,9 +101,9 @@ Envoy is famous for its observability capabilities. It exposes various statistic
 
 
 
-# Envoy
+# Envoy <a name="paragraph4"></a>
 
-### Install Envoy on Ubuntu Linux
+### Install Envoy on Ubuntu Linux <a name="paragraph5"></a>
 ```bash
 sudo apt update
 sudo apt install apt-transport-https gnupg2 curl lsb-release
@@ -111,7 +118,7 @@ sudo apt install -y getenvoy-envoy
 envoy --version
 envoy --help
 ```
-### To Run Envoy 
+### To Run Envoy <a name="paragraph6"></a>
 
 The `-c` or `--config-path` flag tells Envoy the path to its initial configuration.
 
