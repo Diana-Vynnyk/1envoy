@@ -28,7 +28,19 @@
 21. [Envoy admin web UI](#paragraph20)
 22. [Sources](#paragraph21)
 
-
+1. [daemontools](#daemont)
+2. [How to install daemontools](#daemont1)
+3. [How to start daemontools](#daemont2)
+4. [The svscanboot program](#daemont3)
+5. [The svscan program](#daemont4)
+6. [The supervise program](#daemont5)
+7. [The svc program](#daemont6)
+8. [The svok program](#daemont7)
+9. [The svstat program](#daemont8)
+10. [The fghack program](#daemont9)
+11. [The pgrphack program](#daemont10)
+12. [The readproctitle program](#daemont11)
+13. [The multilog program](#daemont12)
 
 ## [Screenshots:](https://drive.google.com/drive/folders/1hVJwRDy-7wuawmoHm_CpJeHNsXLh3NAR?usp=sharing) <a name="paragraph1"></a>
 [docker build](https://drive.google.com/file/d/1NsjGsZD7w9WmiMET98VOUtH1vPw5M4Kr/view?usp=sharing)
@@ -564,6 +576,230 @@ Point your browser to http://localhost:9901.
 
 
 
+
+# Daemontools <a name="daemont"></a>
+
+
+### How to install daemontools <a name="daemont1"></a>
+
+daemontools works only under UNIX.
+
+Create a /package directory:
+
+```bash
+     mkdir -p /package
+     chmod 1755 /package
+     cd /package
+```
+
+Download daemontools-0.76.tar.gz into /package. Unpack the daemontools package:
+
+```bash
+     gunzip daemontools-0.76.tar
+     tar -xpf daemontools-0.76.tar
+     rm -f daemontools-0.76.tar
+     cd admin/daemontools-0.76
+```
+
+Compile and set up the daemontools programs:
+
+```bash
+     package/install
+```
+
+On BSD systems, reboot to start svscan.
+
+### How to start daemontools <a name="daemont2"></a>
+
+#### /etc/init
+
+Put the lines
+```bash
+     start on runlevel [12345]
+     stop on runlevel [^12345]
+     respawn
+     exec /command/svscanboot
+```
+into `/etc/init/svscan.conf`.
+
+Portability: This works under Ubuntu 9.10 through (at least) 11.10.
+
+### The svscanboot program <a name="daemont3"></a>
+
+`svscanboot` starts `svscan` in the `/service` directory, with output and error messages logged through `readproctitle`.
+
+#### Interface
+
+     `svscanboot`
+     
+`svscanboot` runs the pipeline
+
+     `svscan /service 2>&1 | readproctitle service errors: .....`
+     
+with 400 dots. The last 400 bytes of error messages from `svscan` will be visible to `ps` through `readproctitle`.
+`svscanboot` sets $PATH to
+
+     `/command:/usr/local/bin:/usr/local/sbin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin`
+     
+and clears all other environment variables. Program writers are encouraged to use globally allocated names in `/command`.
+
+### The svscan program <a name="daemont4"></a>
+
+`svscan` starts and monitors a collection of services.
+
+Interface
+
+`svscan` starts one `supervise` process for each subdirectory of the current directory, up to a limit of 1000 subdirectories. `svscan` skips subdirectory names starting with dots. `supervise` must be in `svscan's` path.
+
+`svscan` optionally starts a pair of `supervise` processes, one for a subdirectory `s`, one for `s/log`, with a pipe between them. It does this if the name `s` is at most 255 bytes long and `s/log` exists. (In versions 0.70 and below, it does this if s is sticky.) svscan needs two free descriptors for each pipe.
+
+Every five seconds, `svscan` checks for subdirectories again. If it sees a new subdirectory, it starts a new `supervise` process. If it sees an old subdirectory where a `supervise` process has exited, it restarts the supervise process. In the `log` case it reuses the same pipe so that no data is lost.
+
+`svscan` is designed to run forever. If it has trouble creating a pipe or running `supervise`, it prints a message to stderr; it will try again five seconds later.
+
+If `svscan` is given a command-line argument, it switches to that directory when it starts.
+
+### The supervise program <a name="daemont5"></a>
+
+`supervise` starts and monitors a service.
+
+Interface
+
+    `supervise s`
+     
+`supervise` switches to the directory named `s` and starts `./run`. It restarts `./run` if `./run` exits. It pauses for a second after starting `./run`, so that it does not loop too quickly if `./run` exits immediately.
+
+If the file s/down exists, supervise does not start `./run` immediately. You can use `svc` to start `./run` and to give other commands to supervise.
+
+`supervise` maintains status information in a binary format inside the directory `s/supervise`, which must be writable to `supervise`. The status information can be read by `svstat`.
+
+`supervise` may exit immediately after startup if it cannot find the files it needs in `s` or if another copy of `supervise` is already running in `s`. Once supervise is successfully running, it will not exit unless it is killed or specifically asked to exit. You can use `svok` to check whether supervise is successfully running. You can use `svscan` to reliably start a collection of `supervise` processes.
+
+### The svc program <a name="daemont6"></a>
+
+`svc` controls services monitored by `supervise`.
+
+Interface
+
+     `svc opts services`
+     
+`opts` is a series of getopt-style options. `services` consists of any number of arguments, each argument naming a directory used by `supervise`.
+
+`svc` applies all the options to each service in turn. Here are the options:
+
+`-u`: Up. If the service is not running, start it. If the service stops, restart it.
+
+`-d`: Down. If the service is running, send it a TERM signal and then a CONT signal. After it stops, do not restart it.
+
+`-o`: Once. If the service is not running, start it. Do not restart it if it stops.
+
+`-p`: Pause. Send the service a STOP signal.
+
+`-c`: Continue. Send the service a CONT signal.
+
+`-h`: Hangup. Send the service a HUP signal.
+
+`-a`: Alarm. Send the service an ALRM signal.
+
+`-i`: Interrupt. Send the service an INT signal.
+
+`-t`: Terminate. Send the service a TERM signal.
+
+`-k`: Kill. Send the service a KILL signal.
+
+`-x`: Exit. supervise will exit as soon as the service is down. If you use this option on a stable system, you're doing something wrong; supervise is designed to run forever.
+
+### The svok program <a name="daemont7"></a>
+
+`svok` checks whether `supervise` is running.
+
+Interface
+
+     `svok service`
+     
+`svok` checks whether `supervise` is successfully running in the directory named `service`. It silently exits 0 if `supervise` is successfully running. It silently exits 100 if `supervise` is not successfully running.
+
+### The svstat program <a name="daemont8"></a>
+
+`svstat` prints the status of services monitored by `supervise`.
+
+Interface
+
+     `svstat services`
+     
+`services` consists of any number of arguments, each argument naming a directory. `svstat` prints one human-readable line for each directory, saying whether `supervise` is successfully running in that directory, and reporting the status information maintained by `supervise`.
+
+### The fghack  program <a name="daemont9"></a>
+
+`fghack` is an anti-backgrounding tool. 
+
+Interface
+
+     `fghack child`
+     
+`fghack` runs `child` with many extra descriptors writing to a pipe. `fghack` reads and discards any data written to the pipe. After `child` has exited and the pipe has been closed, `fghack` exits.
+
+### The pgrphack program <a name="daemont10"></a>
+
+`pgrphack` runs a program in a separate process group.
+
+Interface
+
+     `pgrphack child`
+     
+`pgrphack` runs child in a new process group.
+
+### The readproctitle  program <a name="daemont11"></a>
+
+`readproctitle` maintains an automatically rotated log in memory for inspection by ps.
+
+Interface
+
+    `readproctitle L D`
+     
+`L` consists of any number of arguments. `D` is one argument consisting of at least five dots.
+`readproctitle` reads data into the end of `D`, shifting `D` to the left to make room. This means that the most recent data is visible to process-listing tools such as `ps. readproctitle` always leaves three dots at the left of `D`.
+
+For example, if
+
+     `readproctitle io errors: ....................`
+     
+reads the data
+
+     `fatal error xyz`
+     
+     `warning abc`
+     
+then its command-line arguments change to
+
+     `readproctitle io errors: ... xyz!warning abc!`
+     
+with a newline character in place of each `!`. Process-listing tools typically show the newline character as `?` or `\n`.
+
+`readproctitle` exits when it reaches the end of input.
+
+Beware that most implementations of `ps` have small argument-length limits. These limits apply to the total length of `readproctitle L D`. I have not seen a system with a limit below 512 bytes.
+
+### The multilog program <a name="daemont12"></a>
+
+`multilog` reads a sequence of lines from stdin and appends selected lines to any number of logs.
+
+Interface
+
+     `multilog script`
+     
+`script` consists of any number of arguments. Each argument specifies one action. The actions are carried out in order for each line of input. Note that actions may contain shell metacharacters that need to be quoted when `multilog` is run from a shell.
+
+`multilog` exits 0 when it sees the end of stdin. If stdin has a partial final line then `multilog` inserts a final newline.
+
+`multilog` writes a message to stderr and exits 111, without reading any input, if it runs out of memory or if another `multilog` process is writing to one of the same automatically rotated logs.
+
+If `multilog` has trouble writing to disk after it starts reading input, it writes a message to stderr, pauses, and tries again, without losing any data. Note that this may block any program feeding input to `multilog`.
+
+If `multilog` receives a TERM signal, it will read and process data until the next newline, and then exit, leaving stdin at the first byte of data it has not processed.
+
+
+
 ## Sources <a name="paragraph21"></a>
 
 [Sidecar Proxy Pattern - The Basis Of Service Mesh](https://iximiuz.com/en/posts/service-proxy-pod-sidecar-oh-my/)
@@ -577,3 +813,5 @@ Point your browser to http://localhost:9901.
 [How to Deploy Envoy as a Sidecar Proxy on Kubernetes](https://medium.com/@viggnah/how-to-deploy-envoy-as-a-sidecar-proxy-on-kubernetes-c3a3ad3935ee)
 
 [Double proxy (with mTLS encryption)](https://www.envoyproxy.io/docs/envoy/v1.28.0/start/sandboxes/double-proxy.html)
+
+[daemontools](https://cr.yp.to/daemontools.html)
